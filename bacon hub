@@ -263,3 +263,68 @@ Tab:CreateSlider({
        speed = Value
    end,
 })
+
+local noclip = false
+
+-- safe noclip loop (keeps floor collision working)
+RunService.Stepped:Connect(function()
+    if noclip and player.Character then
+        for _, part in ipairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+
+                -- keep HumanoidRootPart collidable so you don't fall through floor
+                if part.Name == "HumanoidRootPart" then
+                    part.CanCollide = true
+                else
+                    part.CanCollide = false
+                end
+
+            end
+        end
+    end
+end)
+
+-- toggle
+local nocliptoggle = Tab:CreateToggle({
+   Name = "Noclip",
+   CurrentValue = false,
+   Flag = "nocliptoggle", 
+   Callback = function(Value)
+       noclip = Value
+
+       if Value and player.Character then
+           for _, part in ipairs(player.Character:GetDescendants()) do
+               if part:IsA("BasePart") then
+                   if part.Name == "HumanoidRootPart" then
+                       part.CanCollide = true
+                   else
+                       part.CanCollide = false
+                   end
+               end
+           end
+       end
+   end,
+})
+
+-- respawn fix
+player.CharacterAdded:Connect(function(char)
+    char:WaitForChild("HumanoidRootPart")
+
+    if noclip then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                if part.Name == "HumanoidRootPart" then
+                    part.CanCollide = true
+                else
+                    part.CanCollide = false
+                end
+            end
+        end
+    end
+end)
+
+
+
+
+
+
