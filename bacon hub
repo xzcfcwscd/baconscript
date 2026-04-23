@@ -327,6 +327,9 @@ local highlights = {}
 local connections = {}
 local enabled = false
 
+--------------------------------------------------
+-- CREATE HIGHLIGHT
+--------------------------------------------------
 local function addHighlight(obj)
     if obj:FindFirstChild("ESP_HIGHLIGHT") then return end
 
@@ -340,7 +343,10 @@ local function addHighlight(obj)
     table.insert(highlights, h)
 end
 
-local function clearHighlights()
+--------------------------------------------------
+-- CLEAR
+--------------------------------------------------
+local function clearAll()
     for _, h in ipairs(highlights) do
         if h then h:Destroy() end
     end
@@ -352,15 +358,16 @@ local function clearHighlights()
     connections = {}
 end
 
+--------------------------------------------------
+-- PATHSTANDS
+--------------------------------------------------
 local function setupPathStands(path)
-    -- existing
     for _, obj in ipairs(path:GetChildren()) do
         if obj:IsA("Model") then
             addHighlight(obj)
         end
     end
 
-    -- new ones
     table.insert(connections, path.ChildAdded:Connect(function(obj)
         if enabled and obj:IsA("Model") then
             addHighlight(obj)
@@ -368,17 +375,37 @@ local function setupPathStands(path)
     end))
 end
 
+--------------------------------------------------
+-- DEFAULT PARTS
+--------------------------------------------------
 local function setupDefaults()
-    -- existing
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("BasePart") and obj.Name == "Default" then
             addHighlight(obj)
         end
     end
 
-    -- new ones
     table.insert(connections, workspace.DescendantAdded:Connect(function(obj)
         if enabled and obj:IsA("BasePart") and obj.Name == "Default" then
+            addHighlight(obj)
+        end
+    end))
+end
+
+--------------------------------------------------
+-- PATH (NEW PART)
+--------------------------------------------------
+local function setupPath(pathFolder)
+    -- existing
+    for _, obj in ipairs(pathFolder:GetDescendants()) do
+        if obj:IsA("Model") or obj:IsA("BasePart") then
+            addHighlight(obj)
+        end
+    end
+
+    -- new
+    table.insert(connections, pathFolder.DescendantAdded:Connect(function(obj)
+        if enabled and (obj:IsA("Model") or obj:IsA("BasePart")) then
             addHighlight(obj)
         end
     end))
@@ -395,7 +422,7 @@ local highlightoggle = Tab:CreateToggle({
        enabled = Value
 
        if Value then
-           -- PathStands setup
+           -- PathStands
            local path = workspace:FindFirstChild("_MAP")
            if path then
                path = path:FindFirstChild("Interactables")
@@ -407,17 +434,20 @@ local highlightoggle = Tab:CreateToggle({
                end
            end
 
-           -- Default parts setup
+           -- Default parts
            setupDefaults()
 
+           -- Workspace.Path
+           local pathFolder = workspace:FindFirstChild("Path")
+           if pathFolder then
+               setupPath(pathFolder)
+           end
+
        else
-           clearHighlights()
+           clearAll()
        end
    end,
 })
-
-
-
 
 
 
