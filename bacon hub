@@ -485,13 +485,4 @@ local highlightoggle = Tab:CreateToggle({
 
 local Label = Tab:CreateLabel("Poison Path scripts ---", 71291571288785, Color3.fromRGB(255, 255, 255), false) -- Title, Icon, Color, IgnoreTheme
 
-Tab:CreateToggle({
-   Name = "TEST TOGGLE",
-   CurrentValue = false,
-   Flag = "testtoggle",
-   Callback = function(Value)
-       print("toggle:", Value)
-   end,
-})
-
 
