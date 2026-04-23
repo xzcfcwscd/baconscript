@@ -484,5 +484,143 @@ local highlightoggle = Tab:CreateToggle({
 })
 
 local Label = Tab:CreateLabel("Poison Path scripts ---", 71291571288785, Color3.fromRGB(255, 255, 255), false) -- Title, Icon, Color, IgnoreTheme
-
+local Label = Tab:CreateLabel("spider mine autofarm script---", 4483362458, Color3.fromRGB(255, 255, 255), false) -- Title, Icon, Color, IgnoreTheme
+local Toggleautofarm = Tab:CreateToggle({
+    Name = "Toggle Ore autofarm",
+    CurrentValue = false,
+    Flag = "toggautofrm",
+    Callback = function(Value)
+        _G.AutofarmEnabled = Value
+        if Value then
+            task.spawn(function()
+                local Players = game:GetService("Players")
+                local VIM = game:GetService("VirtualInputManager")
+                local player = Players.LocalPlayer
+                
+                local oreDecals = {
+                    "BackGold", "BottomGold", "FrontGold", "LeftGold", "RightGold", "TopGold",
+                    "BackCoal", "BottomCoal", "FrontCoal", "LeftCoal", "RightCoal", "TopCoal"
+                }
+                
+                local function hasOreDecal(part, oreType)
+                    for _, child in pairs(part:GetChildren()) do
+                        if child:IsA("Decal") then
+                            for _, decalName in pairs(oreDecals) do
+                                if child.Name == decalName and decalName:find(oreType) then
+                                    return true
+                                end
+                            end
+                        end
+                    end
+                    return false
+                end
+                
+                local function findOreParts(oreType)
+                    local oreParts = {}
+                    local generation = workspace:FindFirstChild("Generation")
+                    if not generation then return oreParts end
+                    
+                    for _, model in pairs(generation:GetChildren()) do
+                        if model:IsA("Model") or model:IsA("Folder") then
+                            for _, part in pairs(model:GetDescendants()) do
+                                if part:IsA("BasePart") and part.Name == "Dirt" then
+                                    if part.Transparency < 1 and hasOreDecal(part, oreType) then
+                                        table.insert(oreParts, part)
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    return oreParts
+                end
+                
+                local function makeOtherPartsNonCollidable()
+                    local generation = workspace:FindFirstChild("Generation")
+                    if not generation then return end
+                    
+                    for _, model in pairs(generation:GetChildren()) do
+                        if model:IsA("Model") or model:IsA("Folder") then
+                            for _, part in pairs(model:GetDescendants()) do
+                                if part:IsA("BasePart") and part.Name == "Dirt" then
+                                    if not hasOreDecal(part, "Gold") and not hasOreDecal(part, "Coal") then
+                                        part.CanCollide = false
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                local function getPositionInFront(targetPart)
+                    local offset = targetPart.CFrame.LookVector * 4
+                    return targetPart.Position + offset + Vector3.new(0, 0, 0)
+                end
+                
+                local function teleportTo(position)
+                    local character = player.Character
+                    if character then
+                        local hrp = character:FindFirstChild("HumanoidRootPart")
+                        if hrp then
+                            hrp.CFrame = CFrame.new(position) * CFrame.new(0, 3, 0)
+                        end
+                    end
+                end
+                
+                local function clickPart()
+                    VIM:SendMouseButtonEvent(
+                        workspace.CurrentCamera.ViewportSize.X / 2,
+                        workspace.CurrentCamera.ViewportSize.Y / 2,
+                        0, true, game, 1
+                    )
+                    task.wait()
+                    VIM:SendMouseButtonEvent(
+                        workspace.CurrentCamera.ViewportSize.X / 2,
+                        workspace.CurrentCamera.ViewportSize.Y / 2,
+                        0, false, game, 1
+                    )
+                end
+                
+                local function farmOre(oreType)
+                    while _G.AutofarmEnabled do
+                        makeOtherPartsNonCollidable()
+                        local oreParts = findOreParts(oreType)
+                        
+                        if #oreParts == 0 then
+                            break
+                        end
+                        
+                        for _, orePart in pairs(oreParts) do
+                            if not _G.AutofarmEnabled then return end
+                            if orePart and orePart.Parent and orePart.Transparency < 1 then
+                                local targetPos = getPositionInFront(orePart)
+                                
+                                while _G.AutofarmEnabled and orePart and orePart.Parent and orePart.Transparency < 1 do
+                                    teleportTo(targetPos)
+                                    
+                                    local character = player.Character
+                                    if character then
+                                        local head = character:FindFirstChild("Head")
+                                        if head then
+                                            workspace.CurrentCamera.CFrame = CFrame.new(head.Position, orePart.Position)
+                                        end
+                                    end
+                                    
+                                    clickPart()
+                                    task.wait(0.05)
+                                end
+                            end
+                        end
+                        task.wait(0.1)
+                    end
+                end
+                
+                -- Farm Gold first, then Coal
+                farmOre("Gold")
+                if _G.AutofarmEnabled then
+                    farmOre("Coal")
+                end
+            end)
+        end
+    end,
+})
 
