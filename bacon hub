@@ -323,16 +323,14 @@ player.CharacterAdded:Connect(function(char)
     end
 end)
 
-local highlights = {}
-local connections = {}
-local enabled = false
+local Label = Tab:CreateLabel("Poison path scripts---", 71291571288785, Color3.fromRGB(255, 255, 255), false) -- Title, Icon, Color, IgnoreTheme
 
---------------------------------------------------
--- CREATE HIGHLIGHT
---------------------------------------------------
 local function addHighlight(obj)
     if obj:FindFirstChild("ESP_HIGHLIGHT") then return end
 
+    --------------------------------------------------
+    -- HIGHLIGHT
+    --------------------------------------------------
     local h = Instance.new("Highlight")
     h.Name = "ESP_HIGHLIGHT"
     h.FillColor = Color3.fromRGB(0, 255, 0)
@@ -341,113 +339,35 @@ local function addHighlight(obj)
     h.Parent = obj
 
     table.insert(highlights, h)
-end
 
---------------------------------------------------
--- CLEAR
---------------------------------------------------
-local function clearAll()
-    for _, h in ipairs(highlights) do
-        if h then h:Destroy() end
-    end
-    highlights = {}
+    --------------------------------------------------
+    -- BOX HANDLE
+    --------------------------------------------------
+    local adorneePart
 
-    for _, c in ipairs(connections) do
-        c:Disconnect()
-    end
-    connections = {}
-end
-
---------------------------------------------------
--- PATHSTANDS
---------------------------------------------------
-local function setupPathStands(path)
-    for _, obj in ipairs(path:GetChildren()) do
-        if obj:IsA("Model") then
-            addHighlight(obj)
-        end
+    if obj:IsA("Model") then
+        adorneePart = obj:FindFirstChildWhichIsA("BasePart")
+    elseif obj:IsA("BasePart") then
+        adorneePart = obj
     end
 
-    table.insert(connections, path.ChildAdded:Connect(function(obj)
-        if enabled and obj:IsA("Model") then
-            addHighlight(obj)
-        end
-    end))
-end
+    if adorneePart then
+        local box = Instance.new("BoxHandleAdornment")
+        box.Name = "ESP_BOX"
+        box.Adornee = adorneePart
+        box.AlwaysOnTop = true
+        box.ZIndex = 5
+        box.Size = adorneePart.Size + Vector3.new(0.1, 0.1, 0.1)
+        box.Color3 = Color3.fromRGB(0, 255, 0)
+        box.Transparency = 0.3
+        box.Parent = adorneePart
 
---------------------------------------------------
--- DEFAULT PARTS
---------------------------------------------------
-local function setupDefaults()
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and obj.Name == "Default" then
-            addHighlight(obj)
-        end
+        table.insert(highlights, box)
     end
-
-    table.insert(connections, workspace.DescendantAdded:Connect(function(obj)
-        if enabled and obj:IsA("BasePart") and obj.Name == "Default" then
-            addHighlight(obj)
-        end
-    end))
 end
 
---------------------------------------------------
--- PATH (NEW PART)
---------------------------------------------------
-local function setupPath(pathFolder)
-    -- existing
-    for _, obj in ipairs(pathFolder:GetDescendants()) do
-        if obj:IsA("Model") or obj:IsA("BasePart") then
-            addHighlight(obj)
-        end
-    end
+local Label = Tab:CreateLabel("Poison Path scripts ---", 71291571288785, Color3.fromRGB(255, 255, 255), false) -- Title, Icon, Color, IgnoreTheme
 
-    -- new
-    table.insert(connections, pathFolder.DescendantAdded:Connect(function(obj)
-        if enabled and (obj:IsA("Model") or obj:IsA("BasePart")) then
-            addHighlight(obj)
-        end
-    end))
-end
-
---------------------------------------------------
--- TOGGLE
---------------------------------------------------
-local highlightoggle = Tab:CreateToggle({
-   Name = "Highlight",
-   CurrentValue = false,
-   Flag = "highlighhttoggle", 
-   Callback = function(Value)
-       enabled = Value
-
-       if Value then
-           -- PathStands
-           local path = workspace:FindFirstChild("_MAP")
-           if path then
-               path = path:FindFirstChild("Interactables")
-               if path then
-                   path = path:FindFirstChild("PathStands")
-                   if path then
-                       setupPathStands(path)
-                   end
-               end
-           end
-
-           -- Default parts
-           setupDefaults()
-
-           -- Workspace.Path
-           local pathFolder = workspace:FindFirstChild("Path")
-           if pathFolder then
-               setupPath(pathFolder)
-           end
-
-       else
-           clearAll()
-       end
-   end,
-})
 
 
 
