@@ -499,27 +499,24 @@ local function getOreInfo(part)
     for _, child in ipairs(part:GetDescendants()) do
         if child:IsA("Decal") then
             for _, name in ipairs(goldDecalNames) do
-                if child.Name == name then
-                    return "gold", name
-                end
+                if child.Name == name then return "gold", name end
             end
             for _, name in ipairs(coalDecalNames) do
-                if child.Name == name then
-                    return "coal", name
-                end
+                if child.Name == name then return "coal", name end
             end
         end
     end
     return nil, nil
 end
 
-local function getFaceNormal(decalName)
+-- Returns the LOCAL space normal for the face
+local function getLocalNormal(decalName)
     local face = decalName:match("^(%w+)")
     local normals = {
         Front = Vector3.new(0, 0, 1),
         Back = Vector3.new(0, 0, -1),
-        Right = Vector3.new(-1, 0, 0),
-        Left = Vector3.new(1, 0, 0),
+        Right = Vector3.new(1, 0, 0),
+        Left = Vector3.new(-1, 0, 0),
         Top = Vector3.new(0, 1, 0),
         Bottom = Vector3.new(0, -1, 0)
     }
@@ -529,7 +526,6 @@ end
 local function findOres()
     local goldOres = {}
     local coalOres = {}
-
     local genFolder = workspace:FindFirstChild("Generation")
     if not genFolder then return goldOres, coalOres end
 
@@ -547,14 +543,12 @@ local function findOres()
             end
         end
     end
-
     return goldOres, coalOres
 end
 
 local function setOthersUncollidable(targetPart)
     local genFolder = workspace:FindFirstChild("Generation")
     if not genFolder then return end
-
     for _, obj in ipairs(genFolder:GetDescendants()) do
         if obj:IsA("BasePart") and obj ~= targetPart then
             obj.CanCollide = false
@@ -568,45 +562,50 @@ local function positionPlayer(orePart, decalName)
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
 
-    local normal = getFaceNormal(decalName)
-    local pos = orePart.Position
-    local size = orePart.Size
+    local localNormal = getLocalNormal(decalName)
+    
+    -- If the decal is on Top or Bottom, default to looking at the Front face to prevent camera glitches
+    if localNormal.Y ~= 0 then
+        localNormal = Vector3.new(0, 0, 1)
+    end
 
+    -- Convert local normal to world space based on the ore's exact rotation
+    local worldNormal = orePart.CFrame:VectorToWorldSpace(localNormal)
+
+    -- Calculate distance from center of the part to the edge of that specific face
     local halfExtent
-    if normal.X ~= 0 then
-        halfExtent = size.X / 2
-    elseif normal.Y ~= 0 then
-        halfExtent = size.Y / 2
+    if math.abs(localNormal.X) == 1 then
+        halfExtent = orePart.Size.X / 2
+    elseif math.abs(localNormal.Y) == 1 then
+        halfExtent = orePart.Size.Y / 2
     else
-        halfExtent = size.Z / 2
+        halfExtent = orePart.Size.Z / 2
     end
 
-    -- For top/bottom faces, face from the front instead
-    if normal.Y ~= 0 then
-        normal = Vector3.new(0, 0, 1)
-        halfExtent = size.Z / 2
-    end
-
-    -- Gap from surface: close enough that no 4x4x4 block fits between player and ore
+    -- Gap from surface to prevent clipping into 4x4x4 blocks behind the player
     local gap = 2.5
     local distance = halfExtent + gap
 
-    local targetPos = pos + normal * distance
-    targetPos = Vector3.new(targetPos.X, pos.Y, targetPos.Z)
+    -- Calculate exact world position to stand at
+    local targetPos = orePart.CFrame.Position + (worldNormal * distance)
+    
+    -- Keep the player's Y position at the ore's base Y so they don't float or sink
+    targetPos = Vector3.new(targetPos.X, orePart.CFrame.Position.Y, targetPos.Z)
 
-    hrp.CFrame = CFrame.new(targetPos, pos)
+    -- Force the player to look EXACTLY flat at the face (no edge angles)
+    local lookAtTarget = targetPos - worldNormal
+    hrp.CFrame = CFrame.lookAt(targetPos, lookAtTarget)
+    
     return true
 end
 
 local function mineOre(orePart)
-    -- Method 1: ClickDetector
     local cd = orePart:FindFirstChildWhichIsA("ClickDetector")
     if cd then
         fireclickdetector(cd)
         return
     end
-
-    -- Method 2: Virtual mouse click (for tool-based mining)
+    -- Fallback for tool-based mining
     VirtualUser:ClickButton1(Vector2.new())
 end
 
@@ -618,14 +617,8 @@ local function startAutofarm()
         local goldOres, coalOres = findOres()
         local queue = {}
 
-        -- Gold priority first
-        for _, v in ipairs(goldOres) do
-            table.insert(queue, v)
-        end
-        -- Then coal
-        for _, v in ipairs(coalOres) do
-            table.insert(queue, v)
-        end
+        for _, v in ipairs(goldOres) do table.insert(queue, v) end
+        for _, v in ipairs(coalOres) do table.insert(queue, v) end
 
         if #queue == 0 then
             task.wait(1)
@@ -638,16 +631,19 @@ local function startAutofarm()
             local part = oreData.part
             local decal = oreData.decal
 
-            if not part or not part.Parent or part.Transparency >= 1 then
-                continue
-            end
+            if not part or not part.Parent or part.Transparency >= 1 then continue end
 
             setOthersUncollidable(part)
+            
+            -- Start 6-second timer
+            local startTime = tick() 
 
-            local safetyCounter = 0
+            -- Loop until ore is gone, toggle is off, or 6 seconds pass
             while autofarmEnabled and part and part.Parent and part.Transparency < 1 do
-                safetyCounter = safetyCounter + 1
-                if safetyCounter > 2000 then break end
+                if (tick() - startTime) > 6 then
+                    -- Timed out, move to next ore
+                    break
+                end
 
                 positionPlayer(part, decal)
                 task.wait(0.03)
@@ -673,5 +669,3 @@ local Toggleautofarm = Tab:CreateToggle({
         end
     end,
 })
-})
-
