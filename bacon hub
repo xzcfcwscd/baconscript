@@ -324,45 +324,107 @@ player.CharacterAdded:Connect(function(char)
 end)
 
 local highlights = {}
+local connections = {}
+local enabled = false
 
+local function addHighlight(obj)
+    if obj:FindFirstChild("ESP_HIGHLIGHT") then return end
+
+    local h = Instance.new("Highlight")
+    h.Name = "ESP_HIGHLIGHT"
+    h.FillColor = Color3.fromRGB(0, 255, 0)
+    h.FillTransparency = 0.5
+    h.OutlineTransparency = 1
+    h.Parent = obj
+
+    table.insert(highlights, h)
+end
+
+local function clearHighlights()
+    for _, h in ipairs(highlights) do
+        if h then h:Destroy() end
+    end
+    highlights = {}
+
+    for _, c in ipairs(connections) do
+        c:Disconnect()
+    end
+    connections = {}
+end
+
+local function setupPathStands(path)
+    -- existing
+    for _, obj in ipairs(path:GetChildren()) do
+        if obj:IsA("Model") then
+            addHighlight(obj)
+        end
+    end
+
+    -- new ones
+    table.insert(connections, path.ChildAdded:Connect(function(obj)
+        if enabled and obj:IsA("Model") then
+            addHighlight(obj)
+        end
+    end))
+end
+
+local function setupDefaults()
+    -- existing
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Name == "Default" then
+            addHighlight(obj)
+        end
+    end
+
+    -- new ones
+    table.insert(connections, workspace.DescendantAdded:Connect(function(obj)
+        if enabled and obj:IsA("BasePart") and obj.Name == "Default" then
+            addHighlight(obj)
+        end
+    end))
+end
+
+--------------------------------------------------
+-- TOGGLE
+--------------------------------------------------
 local highlightoggle = Tab:CreateToggle({
    Name = "Highlight",
    CurrentValue = false,
    Flag = "highlighhttoggle", 
    Callback = function(Value)
-
-       local path = workspace:FindFirstChild("_MAP")
-       if not path then return end
-       path = path:FindFirstChild("Interactables")
-       if not path then return end
-       path = path:FindFirstChild("PathStands")
-       if not path then return end
+       enabled = Value
 
        if Value then
-           -- ADD highlights
-           for _, obj in ipairs(path:GetChildren()) do
-               if obj:IsA("Model") then
-                   local highlight = Instance.new("Highlight")
-                   highlight.FillColor = Color3.fromRGB(0, 255, 0)
-                   highlight.FillTransparency = 0.5
-                   highlight.OutlineTransparency = 1
-                   highlight.Parent = obj
-
-                   table.insert(highlights, highlight)
+           -- PathStands setup
+           local path = workspace:FindFirstChild("_MAP")
+           if path then
+               path = path:FindFirstChild("Interactables")
+               if path then
+                   path = path:FindFirstChild("PathStands")
+                   if path then
+                       setupPathStands(path)
+                   end
                end
            end
+
+           -- Default parts setup
+           setupDefaults()
+
        else
-           -- REMOVE highlights
-           for _, h in ipairs(highlights) do
-               if h then
-                   h:Destroy()
-               end
-           end
-           highlights = {}
+           clearHighlights()
        end
-
    end,
 })
+
+
+
+
+
+
+
+
+
+
 
 
 
