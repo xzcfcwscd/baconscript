@@ -323,6 +323,47 @@ player.CharacterAdded:Connect(function(char)
     end
 end)
 
+local highlights = {}
+
+local highlightoggle = Tab:CreateToggle({
+   Name = "Highlight",
+   CurrentValue = false,
+   Flag = "highlighhttoggle", 
+   Callback = function(Value)
+
+       local path = workspace:FindFirstChild("_MAP")
+       if not path then return end
+       path = path:FindFirstChild("Interactables")
+       if not path then return end
+       path = path:FindFirstChild("PathStands")
+       if not path then return end
+
+       if Value then
+           -- ADD highlights
+           for _, obj in ipairs(path:GetChildren()) do
+               if obj:IsA("Model") then
+                   local highlight = Instance.new("Highlight")
+                   highlight.FillColor = Color3.fromRGB(0, 255, 0)
+                   highlight.FillTransparency = 0.5
+                   highlight.OutlineTransparency = 1
+                   highlight.Parent = obj
+
+                   table.insert(highlights, highlight)
+               end
+           end
+       else
+           -- REMOVE highlights
+           for _, h in ipairs(highlights) do
+               if h then
+                   h:Destroy()
+               end
+           end
+           highlights = {}
+       end
+
+   end,
+})
+
 
 
 
